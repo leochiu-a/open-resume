@@ -1,7 +1,12 @@
 "use client";
 
 import { createContext, useContext, useMemo, useState, type PropsWithChildren } from "react";
+import { useReadLocalStorage } from "usehooks-ts";
 
+import {
+  APPEARANCE_STORAGE_KEY,
+  isAppearance,
+} from "@/app/resume-editor/components/template/appearance-storage";
 import { DEFAULT_TEMPLATE_ID } from "@/app/resume-editor/components/template/registry";
 
 /**
@@ -49,11 +54,37 @@ export const useAccent = () => {
 };
 
 const AccentProvider = ({ children }: PropsWithChildren) => {
-  const [templateId, setTemplateId] = useState(DEFAULT_TEMPLATE_ID);
-  const [color, setColor] = useState(SWATCHES[0].value);
+  /*
+    What the visitor last chose in the editor, if they have been here before. The
+    page reads that key and never writes it: the editor owns the choice, and the
+    landing page is only borrowing it so a returning visitor's sheet — and the
+    link into the editor it sits beside, which carries the pair in its query
+    string — shows their template rather than resetting them to Classic.
+
+    Null on the server and on the first client render, so the sheet starts on the
+    default and swaps once storage has been read. Nothing here can be rendered on
+    the server, and gating the whole page on a mounted flag to avoid the swap
+    would cost the hero its server-rendered first paint.
+  */
+  const stored = useReadLocalStorage<unknown>(APPEARANCE_STORAGE_KEY);
+  const remembered = isAppearance(stored) ? stored : null;
+
+  /* Empty until the visitor picks something on this page, which is what lets the
+     remembered pair sit underneath as the fallback: a `useState` seeded from
+     storage would have to be seeded in an effect, and that effect would overwrite
+     a click that happened first. */
+  const [picked, setPicked] = useState<{ templateId?: string; color?: string }>({});
+
+  const templateId = picked.templateId ?? remembered?.templateId ?? DEFAULT_TEMPLATE_ID;
+  const color = picked.color ?? remembered?.backgroundColor ?? SWATCHES[0].value;
 
   const value = useMemo(
-    () => ({ templateId, color, setTemplateId, setColor }),
+    () => ({
+      templateId,
+      color,
+      setTemplateId: (id: string) => setPicked((current) => ({ ...current, templateId: id })),
+      setColor: (next: string) => setPicked((current) => ({ ...current, color: next })),
+    }),
     [templateId, color],
   );
 

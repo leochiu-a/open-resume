@@ -5,7 +5,13 @@ import { ColorResult } from "@uiw/react-color";
 import { trackEvent } from "@/lib/analytics";
 import { readAppearanceRequest } from "@/lib/appearance-link";
 
-import { DEFAULT_TEMPLATE_ID, getTemplate, TEMPLATES } from "../components/template/registry";
+import {
+  APPEARANCE_STORAGE_KEY,
+  type Appearance,
+  defaultAppearance,
+  isAppearance,
+} from "../components/template/appearance-storage";
+import { getTemplate } from "../components/template/registry";
 
 /**
  * The preview's presentation state: which template renders the resume, and the
@@ -20,40 +26,6 @@ import { DEFAULT_TEMPLATE_ID, getTemplate, TEMPLATES } from "../components/templ
  * is a decision about your own document, and having it snap back to Classic on
  * every reload made it feel like a preview toggle instead.
  */
-
-export const APPEARANCE_STORAGE_KEY = "resume-appearance";
-
-interface Appearance {
-  templateId: string;
-  backgroundColor: string;
-}
-
-const defaultAppearance = (id: string = DEFAULT_TEMPLATE_ID): Appearance => ({
-  templateId: id,
-  backgroundColor: getTemplate(id).defaultColor,
-});
-
-/**
- * What comes back out of storage, which is not to be trusted: it was written by an
- * older release, or hand-edited, or belongs to a template that has since been
- * removed from the registry.
- *
- * A stale `templateId` is the interesting case. `getTemplate` already falls back
- * to Classic for an unknown id, but the stored colour would then be one chosen for
- * a template nobody can see any more — so the pair is discarded together rather
- * than half-honoured.
- */
-const isAppearance = (value: unknown): value is Appearance => {
-  if (typeof value !== "object" || value === null) return false;
-
-  const { templateId, backgroundColor } = value as Partial<Appearance>;
-
-  return (
-    typeof backgroundColor === "string" &&
-    backgroundColor !== "" &&
-    TEMPLATES.some((template) => template.id === templateId)
-  );
-};
 
 const useTemplateOptions = () => {
   const [stored, setStored] = useLocalStorage<Appearance>(

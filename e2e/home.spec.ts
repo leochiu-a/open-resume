@@ -97,6 +97,32 @@ test.describe("home page", () => {
   });
 
   /**
+   * The other half of that handoff, for the visit after. A returning visitor who
+   * comes back through the home page and clicks straight into the editor used to
+   * be reset to Classic: the link carries whatever the page's preview is showing,
+   * and the preview always started on the default. The page reads the stored
+   * choice so the sheet, and the link beside it, are already theirs.
+   */
+  test("a returning visitor's stored template is what the page previews", async ({ page }) => {
+    await page.goto("/");
+    await page.evaluate(() =>
+      window.localStorage.setItem(
+        "resume-appearance",
+        JSON.stringify({ templateId: "banner", backgroundColor: "#6E1F2B" }),
+      ),
+    );
+    await page.reload();
+
+    await expect(page.getByRole("button", { name: "Banner" })).toContainText("Previewing");
+
+    await page.getByRole("link", { name: "Open the editor" }).click();
+
+    await expect
+      .poll(() => page.evaluate(() => window.localStorage.getItem("resume-appearance")))
+      .toBe(JSON.stringify({ templateId: "banner", backgroundColor: "#6E1F2B" }));
+  });
+
+  /**
    * The swatch is a preview of a printed page, not a theme picker: it tints the
    * sheet and stops there. The page's own accent is fixed, and it is easy to
    * re-link the two by accident, because the sheet keeps working either way.
